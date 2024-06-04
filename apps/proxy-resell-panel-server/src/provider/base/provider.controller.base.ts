@@ -16,7 +16,11 @@ import * as errors from "../../errors";
 import { Request } from "express";
 import { plainToClass } from "class-transformer";
 import { ApiNestedQuery } from "../../decorators/api-nested-query.decorator";
+import * as nestAccessControl from "nest-access-control";
+import * as defaultAuthGuard from "../../auth/defaultAuth.guard";
 import { ProviderService } from "../provider.service";
+import { AclValidateRequestInterceptor } from "../../interceptors/aclValidateRequest.interceptor";
+import { AclFilterResponseInterceptor } from "../../interceptors/aclFilterResponse.interceptor";
 import { ProviderCreateInput } from "./ProviderCreateInput";
 import { Provider } from "./Provider";
 import { ProviderFindManyArgs } from "./ProviderFindManyArgs";
@@ -26,10 +30,24 @@ import { ProxyFindManyArgs } from "../../proxy/base/ProxyFindManyArgs";
 import { Proxy } from "../../proxy/base/Proxy";
 import { ProxyWhereUniqueInput } from "../../proxy/base/ProxyWhereUniqueInput";
 
+@swagger.ApiBearerAuth()
+@common.UseGuards(defaultAuthGuard.DefaultAuthGuard, nestAccessControl.ACGuard)
 export class ProviderControllerBase {
-  constructor(protected readonly service: ProviderService) {}
+  constructor(
+    protected readonly service: ProviderService,
+    protected readonly rolesBuilder: nestAccessControl.RolesBuilder
+  ) {}
+  @common.UseInterceptors(AclValidateRequestInterceptor)
   @common.Post()
   @swagger.ApiCreatedResponse({ type: Provider })
+  @nestAccessControl.UseRoles({
+    resource: "Provider",
+    action: "create",
+    possession: "any",
+  })
+  @swagger.ApiForbiddenResponse({
+    type: errors.ForbiddenException,
+  })
   async createProvider(
     @common.Body() data: ProviderCreateInput
   ): Promise<Provider> {
@@ -46,9 +64,18 @@ export class ProviderControllerBase {
     });
   }
 
+  @common.UseInterceptors(AclFilterResponseInterceptor)
   @common.Get()
   @swagger.ApiOkResponse({ type: [Provider] })
   @ApiNestedQuery(ProviderFindManyArgs)
+  @nestAccessControl.UseRoles({
+    resource: "Provider",
+    action: "read",
+    possession: "any",
+  })
+  @swagger.ApiForbiddenResponse({
+    type: errors.ForbiddenException,
+  })
   async providers(@common.Req() request: Request): Promise<Provider[]> {
     const args = plainToClass(ProviderFindManyArgs, request.query);
     return this.service.providers({
@@ -64,9 +91,18 @@ export class ProviderControllerBase {
     });
   }
 
+  @common.UseInterceptors(AclFilterResponseInterceptor)
   @common.Get("/:id")
   @swagger.ApiOkResponse({ type: Provider })
   @swagger.ApiNotFoundResponse({ type: errors.NotFoundException })
+  @nestAccessControl.UseRoles({
+    resource: "Provider",
+    action: "read",
+    possession: "own",
+  })
+  @swagger.ApiForbiddenResponse({
+    type: errors.ForbiddenException,
+  })
   async provider(
     @common.Param() params: ProviderWhereUniqueInput
   ): Promise<Provider | null> {
@@ -89,9 +125,18 @@ export class ProviderControllerBase {
     return result;
   }
 
+  @common.UseInterceptors(AclValidateRequestInterceptor)
   @common.Patch("/:id")
   @swagger.ApiOkResponse({ type: Provider })
   @swagger.ApiNotFoundResponse({ type: errors.NotFoundException })
+  @nestAccessControl.UseRoles({
+    resource: "Provider",
+    action: "update",
+    possession: "any",
+  })
+  @swagger.ApiForbiddenResponse({
+    type: errors.ForbiddenException,
+  })
   async updateProvider(
     @common.Param() params: ProviderWhereUniqueInput,
     @common.Body() data: ProviderUpdateInput
@@ -122,6 +167,14 @@ export class ProviderControllerBase {
   @common.Delete("/:id")
   @swagger.ApiOkResponse({ type: Provider })
   @swagger.ApiNotFoundResponse({ type: errors.NotFoundException })
+  @nestAccessControl.UseRoles({
+    resource: "Provider",
+    action: "delete",
+    possession: "any",
+  })
+  @swagger.ApiForbiddenResponse({
+    type: errors.ForbiddenException,
+  })
   async deleteProvider(
     @common.Param() params: ProviderWhereUniqueInput
   ): Promise<Provider | null> {
@@ -147,8 +200,14 @@ export class ProviderControllerBase {
     }
   }
 
+  @common.UseInterceptors(AclFilterResponseInterceptor)
   @common.Get("/:id/proxies")
   @ApiNestedQuery(ProxyFindManyArgs)
+  @nestAccessControl.UseRoles({
+    resource: "Proxy",
+    action: "read",
+    possession: "any",
+  })
   async findProxies(
     @common.Req() request: Request,
     @common.Param() params: ProviderWhereUniqueInput
@@ -182,6 +241,11 @@ export class ProviderControllerBase {
   }
 
   @common.Post("/:id/proxies")
+  @nestAccessControl.UseRoles({
+    resource: "Provider",
+    action: "update",
+    possession: "any",
+  })
   async connectProxies(
     @common.Param() params: ProviderWhereUniqueInput,
     @common.Body() body: ProxyWhereUniqueInput[]
@@ -199,6 +263,11 @@ export class ProviderControllerBase {
   }
 
   @common.Patch("/:id/proxies")
+  @nestAccessControl.UseRoles({
+    resource: "Provider",
+    action: "update",
+    possession: "any",
+  })
   async updateProxies(
     @common.Param() params: ProviderWhereUniqueInput,
     @common.Body() body: ProxyWhereUniqueInput[]
@@ -216,6 +285,11 @@ export class ProviderControllerBase {
   }
 
   @common.Delete("/:id/proxies")
+  @nestAccessControl.UseRoles({
+    resource: "Provider",
+    action: "update",
+    possession: "any",
+  })
   async disconnectProxies(
     @common.Param() params: ProviderWhereUniqueInput,
     @common.Body() body: ProxyWhereUniqueInput[]

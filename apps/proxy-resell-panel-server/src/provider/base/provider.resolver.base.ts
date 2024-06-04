@@ -13,6 +13,12 @@ import * as graphql from "@nestjs/graphql";
 import { GraphQLError } from "graphql";
 import { isRecordNotFoundError } from "../../prisma.util";
 import { MetaQueryPayload } from "../../util/MetaQueryPayload";
+import * as nestAccessControl from "nest-access-control";
+import * as gqlACGuard from "../../auth/gqlAC.guard";
+import { GqlDefaultAuthGuard } from "../../auth/gqlDefaultAuth.guard";
+import * as common from "@nestjs/common";
+import { AclFilterResponseInterceptor } from "../../interceptors/aclFilterResponse.interceptor";
+import { AclValidateRequestInterceptor } from "../../interceptors/aclValidateRequest.interceptor";
 import { Provider } from "./Provider";
 import { ProviderCountArgs } from "./ProviderCountArgs";
 import { ProviderFindManyArgs } from "./ProviderFindManyArgs";
@@ -23,10 +29,20 @@ import { DeleteProviderArgs } from "./DeleteProviderArgs";
 import { ProxyFindManyArgs } from "../../proxy/base/ProxyFindManyArgs";
 import { Proxy } from "../../proxy/base/Proxy";
 import { ProviderService } from "../provider.service";
+@common.UseGuards(GqlDefaultAuthGuard, gqlACGuard.GqlACGuard)
 @graphql.Resolver(() => Provider)
 export class ProviderResolverBase {
-  constructor(protected readonly service: ProviderService) {}
+  constructor(
+    protected readonly service: ProviderService,
+    protected readonly rolesBuilder: nestAccessControl.RolesBuilder
+  ) {}
 
+  @graphql.Query(() => MetaQueryPayload)
+  @nestAccessControl.UseRoles({
+    resource: "Provider",
+    action: "read",
+    possession: "any",
+  })
   async _providersMeta(
     @graphql.Args() args: ProviderCountArgs
   ): Promise<MetaQueryPayload> {
@@ -36,14 +52,26 @@ export class ProviderResolverBase {
     };
   }
 
+  @common.UseInterceptors(AclFilterResponseInterceptor)
   @graphql.Query(() => [Provider])
+  @nestAccessControl.UseRoles({
+    resource: "Provider",
+    action: "read",
+    possession: "any",
+  })
   async providers(
     @graphql.Args() args: ProviderFindManyArgs
   ): Promise<Provider[]> {
     return this.service.providers(args);
   }
 
+  @common.UseInterceptors(AclFilterResponseInterceptor)
   @graphql.Query(() => Provider, { nullable: true })
+  @nestAccessControl.UseRoles({
+    resource: "Provider",
+    action: "read",
+    possession: "own",
+  })
   async provider(
     @graphql.Args() args: ProviderFindUniqueArgs
   ): Promise<Provider | null> {
@@ -54,7 +82,13 @@ export class ProviderResolverBase {
     return result;
   }
 
+  @common.UseInterceptors(AclValidateRequestInterceptor)
   @graphql.Mutation(() => Provider)
+  @nestAccessControl.UseRoles({
+    resource: "Provider",
+    action: "create",
+    possession: "any",
+  })
   async createProvider(
     @graphql.Args() args: CreateProviderArgs
   ): Promise<Provider> {
@@ -64,7 +98,13 @@ export class ProviderResolverBase {
     });
   }
 
+  @common.UseInterceptors(AclValidateRequestInterceptor)
   @graphql.Mutation(() => Provider)
+  @nestAccessControl.UseRoles({
+    resource: "Provider",
+    action: "update",
+    possession: "any",
+  })
   async updateProvider(
     @graphql.Args() args: UpdateProviderArgs
   ): Promise<Provider | null> {
@@ -84,6 +124,11 @@ export class ProviderResolverBase {
   }
 
   @graphql.Mutation(() => Provider)
+  @nestAccessControl.UseRoles({
+    resource: "Provider",
+    action: "delete",
+    possession: "any",
+  })
   async deleteProvider(
     @graphql.Args() args: DeleteProviderArgs
   ): Promise<Provider | null> {
@@ -99,7 +144,13 @@ export class ProviderResolverBase {
     }
   }
 
+  @common.UseInterceptors(AclFilterResponseInterceptor)
   @graphql.ResolveField(() => [Proxy], { name: "proxies" })
+  @nestAccessControl.UseRoles({
+    resource: "Proxy",
+    action: "read",
+    possession: "any",
+  })
   async findProxies(
     @graphql.Parent() parent: Provider,
     @graphql.Args() args: ProxyFindManyArgs

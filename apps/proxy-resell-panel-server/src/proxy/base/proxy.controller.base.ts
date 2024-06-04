@@ -16,17 +16,35 @@ import * as errors from "../../errors";
 import { Request } from "express";
 import { plainToClass } from "class-transformer";
 import { ApiNestedQuery } from "../../decorators/api-nested-query.decorator";
+import * as nestAccessControl from "nest-access-control";
+import * as defaultAuthGuard from "../../auth/defaultAuth.guard";
 import { ProxyService } from "../proxy.service";
+import { AclValidateRequestInterceptor } from "../../interceptors/aclValidateRequest.interceptor";
+import { AclFilterResponseInterceptor } from "../../interceptors/aclFilterResponse.interceptor";
 import { ProxyCreateInput } from "./ProxyCreateInput";
 import { Proxy } from "./Proxy";
 import { ProxyFindManyArgs } from "./ProxyFindManyArgs";
 import { ProxyWhereUniqueInput } from "./ProxyWhereUniqueInput";
 import { ProxyUpdateInput } from "./ProxyUpdateInput";
 
+@swagger.ApiBearerAuth()
+@common.UseGuards(defaultAuthGuard.DefaultAuthGuard, nestAccessControl.ACGuard)
 export class ProxyControllerBase {
-  constructor(protected readonly service: ProxyService) {}
+  constructor(
+    protected readonly service: ProxyService,
+    protected readonly rolesBuilder: nestAccessControl.RolesBuilder
+  ) {}
+  @common.UseInterceptors(AclValidateRequestInterceptor)
   @common.Post()
   @swagger.ApiCreatedResponse({ type: Proxy })
+  @nestAccessControl.UseRoles({
+    resource: "Proxy",
+    action: "create",
+    possession: "any",
+  })
+  @swagger.ApiForbiddenResponse({
+    type: errors.ForbiddenException,
+  })
   async createProxy(@common.Body() data: ProxyCreateInput): Promise<Proxy> {
     return await this.service.createProxy({
       data: {
@@ -57,9 +75,18 @@ export class ProxyControllerBase {
     });
   }
 
+  @common.UseInterceptors(AclFilterResponseInterceptor)
   @common.Get()
   @swagger.ApiOkResponse({ type: [Proxy] })
   @ApiNestedQuery(ProxyFindManyArgs)
+  @nestAccessControl.UseRoles({
+    resource: "Proxy",
+    action: "read",
+    possession: "any",
+  })
+  @swagger.ApiForbiddenResponse({
+    type: errors.ForbiddenException,
+  })
   async proxies(@common.Req() request: Request): Promise<Proxy[]> {
     const args = plainToClass(ProxyFindManyArgs, request.query);
     return this.service.proxies({
@@ -83,9 +110,18 @@ export class ProxyControllerBase {
     });
   }
 
+  @common.UseInterceptors(AclFilterResponseInterceptor)
   @common.Get("/:id")
   @swagger.ApiOkResponse({ type: Proxy })
   @swagger.ApiNotFoundResponse({ type: errors.NotFoundException })
+  @nestAccessControl.UseRoles({
+    resource: "Proxy",
+    action: "read",
+    possession: "own",
+  })
+  @swagger.ApiForbiddenResponse({
+    type: errors.ForbiddenException,
+  })
   async proxy(
     @common.Param() params: ProxyWhereUniqueInput
   ): Promise<Proxy | null> {
@@ -116,9 +152,18 @@ export class ProxyControllerBase {
     return result;
   }
 
+  @common.UseInterceptors(AclValidateRequestInterceptor)
   @common.Patch("/:id")
   @swagger.ApiOkResponse({ type: Proxy })
   @swagger.ApiNotFoundResponse({ type: errors.NotFoundException })
+  @nestAccessControl.UseRoles({
+    resource: "Proxy",
+    action: "update",
+    possession: "any",
+  })
+  @swagger.ApiForbiddenResponse({
+    type: errors.ForbiddenException,
+  })
   async updateProxy(
     @common.Param() params: ProxyWhereUniqueInput,
     @common.Body() data: ProxyUpdateInput
@@ -165,6 +210,14 @@ export class ProxyControllerBase {
   @common.Delete("/:id")
   @swagger.ApiOkResponse({ type: Proxy })
   @swagger.ApiNotFoundResponse({ type: errors.NotFoundException })
+  @nestAccessControl.UseRoles({
+    resource: "Proxy",
+    action: "delete",
+    possession: "any",
+  })
+  @swagger.ApiForbiddenResponse({
+    type: errors.ForbiddenException,
+  })
   async deleteProxy(
     @common.Param() params: ProxyWhereUniqueInput
   ): Promise<Proxy | null> {

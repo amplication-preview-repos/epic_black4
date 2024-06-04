@@ -16,17 +16,35 @@ import * as errors from "../../errors";
 import { Request } from "express";
 import { plainToClass } from "class-transformer";
 import { ApiNestedQuery } from "../../decorators/api-nested-query.decorator";
+import * as nestAccessControl from "nest-access-control";
+import * as defaultAuthGuard from "../../auth/defaultAuth.guard";
 import { BalanceService } from "../balance.service";
+import { AclValidateRequestInterceptor } from "../../interceptors/aclValidateRequest.interceptor";
+import { AclFilterResponseInterceptor } from "../../interceptors/aclFilterResponse.interceptor";
 import { BalanceCreateInput } from "./BalanceCreateInput";
 import { Balance } from "./Balance";
 import { BalanceFindManyArgs } from "./BalanceFindManyArgs";
 import { BalanceWhereUniqueInput } from "./BalanceWhereUniqueInput";
 import { BalanceUpdateInput } from "./BalanceUpdateInput";
 
+@swagger.ApiBearerAuth()
+@common.UseGuards(defaultAuthGuard.DefaultAuthGuard, nestAccessControl.ACGuard)
 export class BalanceControllerBase {
-  constructor(protected readonly service: BalanceService) {}
+  constructor(
+    protected readonly service: BalanceService,
+    protected readonly rolesBuilder: nestAccessControl.RolesBuilder
+  ) {}
+  @common.UseInterceptors(AclValidateRequestInterceptor)
   @common.Post()
   @swagger.ApiCreatedResponse({ type: Balance })
+  @nestAccessControl.UseRoles({
+    resource: "Balance",
+    action: "create",
+    possession: "any",
+  })
+  @swagger.ApiForbiddenResponse({
+    type: errors.ForbiddenException,
+  })
   async createBalance(
     @common.Body() data: BalanceCreateInput
   ): Promise<Balance> {
@@ -55,9 +73,18 @@ export class BalanceControllerBase {
     });
   }
 
+  @common.UseInterceptors(AclFilterResponseInterceptor)
   @common.Get()
   @swagger.ApiOkResponse({ type: [Balance] })
   @ApiNestedQuery(BalanceFindManyArgs)
+  @nestAccessControl.UseRoles({
+    resource: "Balance",
+    action: "read",
+    possession: "any",
+  })
+  @swagger.ApiForbiddenResponse({
+    type: errors.ForbiddenException,
+  })
   async balances(@common.Req() request: Request): Promise<Balance[]> {
     const args = plainToClass(BalanceFindManyArgs, request.query);
     return this.service.balances({
@@ -77,9 +104,18 @@ export class BalanceControllerBase {
     });
   }
 
+  @common.UseInterceptors(AclFilterResponseInterceptor)
   @common.Get("/:id")
   @swagger.ApiOkResponse({ type: Balance })
   @swagger.ApiNotFoundResponse({ type: errors.NotFoundException })
+  @nestAccessControl.UseRoles({
+    resource: "Balance",
+    action: "read",
+    possession: "own",
+  })
+  @swagger.ApiForbiddenResponse({
+    type: errors.ForbiddenException,
+  })
   async balance(
     @common.Param() params: BalanceWhereUniqueInput
   ): Promise<Balance | null> {
@@ -106,9 +142,18 @@ export class BalanceControllerBase {
     return result;
   }
 
+  @common.UseInterceptors(AclValidateRequestInterceptor)
   @common.Patch("/:id")
   @swagger.ApiOkResponse({ type: Balance })
   @swagger.ApiNotFoundResponse({ type: errors.NotFoundException })
+  @nestAccessControl.UseRoles({
+    resource: "Balance",
+    action: "update",
+    possession: "any",
+  })
+  @swagger.ApiForbiddenResponse({
+    type: errors.ForbiddenException,
+  })
   async updateBalance(
     @common.Param() params: BalanceWhereUniqueInput,
     @common.Body() data: BalanceUpdateInput
@@ -151,6 +196,14 @@ export class BalanceControllerBase {
   @common.Delete("/:id")
   @swagger.ApiOkResponse({ type: Balance })
   @swagger.ApiNotFoundResponse({ type: errors.NotFoundException })
+  @nestAccessControl.UseRoles({
+    resource: "Balance",
+    action: "delete",
+    possession: "any",
+  })
+  @swagger.ApiForbiddenResponse({
+    type: errors.ForbiddenException,
+  })
   async deleteBalance(
     @common.Param() params: BalanceWhereUniqueInput
   ): Promise<Balance | null> {
