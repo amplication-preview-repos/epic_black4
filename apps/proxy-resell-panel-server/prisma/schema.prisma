@@ -1,0 +1,72 @@
+datasource db {
+  provider = "mongodb"
+  url      = env("DB_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Order {
+  amount    Float?
+  createdAt DateTime         @default(now())
+  id        String           @id @default(auto()) @map("_id") @db.ObjectId
+  quantity  Int?
+  status    EnumOrderStatus?
+  updatedAt DateTime         @updatedAt
+  user      User?            @relation(fields: [userId], references: [id])
+  userId    String?          @db.ObjectId
+}
+
+model Balance {
+  balance   Float?
+  createdAt DateTime @default(now())
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  updatedAt DateTime @updatedAt
+  user      User?    @relation(fields: [userId], references: [id])
+  userId    String?  @db.ObjectId
+}
+
+model Provider {
+  apiKey    String?
+  apiUrl    String?
+  createdAt DateTime @default(now())
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String?
+  proxies   Proxy[]
+  updatedAt DateTime @updatedAt
+}
+
+model Proxy {
+  country    String?
+  createdAt  DateTime         @default(now())
+  id         String           @id @default(auto()) @map("_id") @db.ObjectId
+  ip         String?
+  port       Int?
+  provider   Provider?        @relation(fields: [providerId], references: [id])
+  providerId String?          @db.ObjectId
+  status     EnumProxyStatus?
+  updatedAt  DateTime         @updatedAt
+}
+
+model User {
+  balances  Balance[]
+  createdAt DateTime  @default(now())
+  email     String?   @unique
+  firstName String?
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  lastName  String?
+  orders    Order[]
+  password  String
+  roles     Json
+  updatedAt DateTime  @updatedAt
+  username  String    @unique
+}
+
+enum EnumOrderStatus {
+  Option1
+}
+
+enum EnumProxyStatus {
+  Option1
+}
